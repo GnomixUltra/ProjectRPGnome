@@ -6,3 +6,5 @@
 
 **Кратко:** открыть в Godot `game/project.godot`, нажать F5.
 WASD — движение, мышь — обзор, SHIFT — бег (тратит выносливость), ПРОБЕЛ — прыжок.
+
+**Готовый exe:** [Releases → latest-exe](https://github.com/GnomixUltra/ProjectRPGnome/releases/tag/latest-exe) (собирается автоматически через GitHub Actions).

@@ -6,6 +6,26 @@
 1. Откройте Godot → **Import** → выберите `game/project.godot`.
 2. Нажмите **Run Project** (F5).
 
+## Готовый .exe (Windows)
+
+**Самый простой способ:** скачайте сборку из GitHub Releases:
+https://github.com/GnomixUltra/ProjectRPGnome/releases/tag/latest-exe
+(архив `ProjectRPG_windows.zip` → распакуйте → запустите `ProjectRPG.exe`).
+
+CI пересобирает exe автоматически при каждом пуше в `main`
+(workflow `.github/workflows/build-exe.yml`, Godot 4.7.2 + export templates).
+
+**Собрать самому в Godot 4.7.2:**
+1. Editor → Manage Export Templates → Download (или Install from file) — нужны шаблоны **4.7.2.stable**.
+2. Project → Export → пресет **Windows Desktop** (уже в `export_presets.cfg`; PCK встроен в exe).
+3. Export Project → `ProjectRPG.exe`.
+
+CLI-сборка (Linux/headless):
+```
+godot --headless --import
+godot --headless --export-release "Windows Desktop" ProjectRPG.exe
+```
+
 ## Структура
 ```
 game/

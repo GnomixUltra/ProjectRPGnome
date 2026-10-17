@@ -1,0 +1,59 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Godot 4.7.2 (stable)
+        run: |
+          cd /tmp
+          curl -sL -o godot.zip https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -o godot.zip
+          chmod +x Godot_v4.7.2-stable_linux.x86_64
+
+      - name: Download export templates 4.7.2.stable
+        run: |
+          cd /tmp
+          curl -sL -o tpz.zip https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.7.2.stable
+          unzip -o tpz.zip 'templates/*' -d tpz_templates
+          cp tpz_templates/templates/* ~/.local/share/godot/export_templates/4.7.2.stable/
+
+      - name: Import project assets
+        working-directory: game
+        run: /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --import
+
+      - name: Export Windows Desktop release
+        working-directory: game
+        run: |
+          mkdir -p /tmp/out
+          /tmp/Godot_v4.7.2-stable_linux.x86_64 --headless --export-release "Windows Desktop" /tmp/out/ProjectRPG.exe
+
+      - name: Package zip
+        run: |
+          cd /tmp/out
+          zip -r ProjectRPG_windows.zip ProjectRPG.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProjectRPG-windows
+          path: /tmp/out/ProjectRPG_windows.zip
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-exe
+          name: "ProjectRPG Windows build (auto)"
+          files: /tmp/out/ProjectRPG_windows.zip
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
