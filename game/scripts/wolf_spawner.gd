@@ -28,7 +28,24 @@ func _random_pos(player: Node3D) -> Vector3:
 			break
 		if Vector2(p.x - player.global_position.x, p.z - player.global_position.z).length() >= min_distance_to_player:
 			break
+	# Посадка по рельефу: ищем достаточно плоскую точку рядом (в чаше холмы
+	# начинаются сразу за поляной, спавн «в воздухе» или на отвесном склоне
+	# приводил к проваливанию/выкатыванию волков).
+	p.y = _ground_y(p)
 	return p
+
+
+## Высота земли с локальным сглаживанием: берём минимум из окрестности,
+## затем прикидываем уклон — если точка слишком крутая, смещаемся к центру.
+func _ground_y(p: Vector3) -> float:
+	var terrain := get_node_or_null("/root/Main/GroundBody/Terrain")
+	if terrain == null or not terrain.has_method("height_at"):
+		return 0.0
+	var best := -1e9
+	for dx in [-2.0, 0.0, 2.0]:
+		for dz in [-2.0, 0.0, 2.0]:
+			best = maxf(best, terrain.height_at(Vector2(p.x + dx, p.z + dz)))
+	return best + 0.2
 
 
 func _make_wolf(pos: Vector3) -> CharacterBody3D:
