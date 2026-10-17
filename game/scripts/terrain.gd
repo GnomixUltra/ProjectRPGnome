@@ -2,13 +2,10 @@
 extends MeshInstance3D
 ## Процедурный искривленный ландшафт в стиле фэнтези-тракта.
 ##
-## Рельеф: плавные холмы (фрактальный шум) + широкая плоская долина в центре
-## — по ней «идёт» тракт. К краям карты земля поднимается волнами.
-##
-## Смешение трав и земли: на вершинах холмов и крутых склонах проступает
-## земля (dirt), в низинах и на пологих местах — трава. Переходы плавные,
-## с рваными «естественными» границами (шум). Считается попиксельно в
-## кастомном шейдере; текстуры назначаются через @export.
+## Рельеф: плавные холмы (фрактальный шум) + широкая плоская поляна в центре.
+## По центру поляны проходит тракт (дорога) из текстуры dirt во всю её ширину;
+## всё остальное — трава (grass). Дорога слегка утоплена в грунт (жёлоб),
+## края размыты мягким шумом.
 ##
 ## Коллизия строится из упрощённой сетки высот тем же алгоритмом.
 
@@ -16,11 +13,12 @@ extends MeshInstance3D
 @export var resolution := 160        # сегментов визуальной сетки
 @export var collision_resolution := 48  # сегментов коллизионной сетки
 @export var hill_amplitude := 7.5    # амплитуда холмов, м
-@export var valley_width := 16.0     # половина ширины плоской долины/тракта, м
+@export var valley_width := 16.0     # половина ширины плоской поляны, м
 @export var valley_falloff := 50.0   # расстояние плавного подъёма холмов от центра, м
+@export var road_half_width := 3.0   # половина ширины дороги (тракта), м
 @export var grass_texture: Texture2D
 @export var dirt_texture: Texture2D
-@export var uv_scale := Vector2(64, 64)  # тайлинг текстур по всей карте
+@export var meters_per_tile := 2.0       # размер тайла текстур в метрах
 
 ## Фрактальный value-шум (CPU).
 const NOISE_SEED := 2026.0
@@ -38,15 +36,26 @@ func _validate_property(property: Dictionary) -> void:
 		property.usage = PROPERTY_USAGE_NO_EDITOR
 
 
+## Маска дороги (тракта): 1 во всю ширину дороги вдоль оси X, 0 далеко.
+## Края слегка «изъедены» шумом, чтобы переход к траве был естественным.
+func road_mask_at(p: Vector2) -> float:
+	var wob := (_vnoise2(p.x * 0.06, p.y * 0.06) - 0.5) * 1.4  # извибы края
+	var edge := road_half_width + wob
+	return 1.0 - smoothstep(edge, edge + 1.2, absf(p.y))
+
+
 ## Высота рельефа в точке (x, z) плоскости карты.
 func height_at(p: Vector2) -> float:
 	var h := _fbm(p * 0.012) * hill_amplitude              # крупные холмы
 	h += _fbm(p * 0.045 + Vector2(37.0, 91.0)) * hill_amplitude * 0.3  # бугры
-	# Долина тракта: в центре высота прижата к нулю, холмы остаются снаружи.
+	# Поляна: в центре высота прижата к нулю, холмы остаются снаружи.
 	var d := maxf(absf(p.x), absf(p.y))
 	var t := clampf((d - valley_width) / valley_falloff, 0.0, 1.0)
-	t = t * t * (3.0 - 2.0 * t)  # smoothstep — мягкий подъём от дороги к холмам
-	return h * t
+	t = t * t * (3.0 - 2.0 * t)  # smoothstep — мягкий подъём к холмам
+	h *= t
+	# Дорога утоплена в грунт — неглубокий жёлоб по центру поляны.
+	h -= road_mask_at(p) * 0.12
+	return h
 
 
 # ---------------- Визуальный меш ----------------
@@ -77,7 +86,7 @@ func _build_mesh() -> void:
 	mat.shader = _shader()
 	mat.set_shader_parameter("grass_tex", grass_texture)
 	mat.set_shader_parameter("dirt_tex", dirt_texture)
-	mat.set_shader_parameter("uv_scale", uv_scale)
+	mat.set_shader_parameter("meters_per_tile", meters_per_tile)
 	st.set_material(mat)
 
 	for j in range(n):
@@ -160,17 +169,11 @@ func _shader() -> Shader:
 shader_type spatial;
 uniform sampler2D grass_tex : source_color;
 uniform sampler2D dirt_tex : source_color;
-uniform vec2 uv_scale = vec2(64.0, 64.0);
-varying float v_height;
-varying vec3 v_nrm;
+uniform float meters_per_tile = 2.0;
+varying vec3 v_world;
+varying float v_road;
 
-void vertex() {
-	vec4 wp = MODEL_MATRIX * vec4(VERTEX, 1.0);
-	v_height = wp.y;
-	v_nrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-}
-
-// Дешёвый value-шум для «рваных» естественных границ смешения.
+// Дешёвый value-шум для «изъеденных» естественных краёв дороги.
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -185,31 +188,37 @@ float vnoise(vec2 p) {
 	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
+// Дорога (тракт): вся ширина — земля (dirt), дальше — трава.
+// Те же параметры, что в height_at(): half=3.0, шум края +-0.7, мягкий край 1.2 м.
+float road_mask(vec2 p) {
+	float wob = (vnoise(p * 0.06) - 0.5) * 1.4;
+	float edge = 3.0 + wob;
+	return 1.0 - smoothstep(edge, edge + 1.2, abs(p.y));
+}
+
+void vertex() {
+	vec4 wp = MODEL_MATRIX * vec4(VERTEX, 1.0);
+	v_world = wp.xyz;
+	// Маска дороги совпадает с рельефом: плоская полоса вдоль X по центру поляны.
+	v_road = road_mask(wp.xz);
+}
+
 void fragment() {
-	vec2 tuv = UV * uv_scale;
+	// Тайлинг по мировым координатам — текстуры не растягиваются и не «плывут».
+	vec2 tuv = v_world.xz / meters_per_tile;
 	vec3 g = texture(grass_tex, tuv).rgb;
 	vec3 d = texture(dirt_tex, tuv).rgb;
 
-	float up = v_nrm.y;                              // 1 = плоско, 0 = отвесно
-	float slope_dirt = 1.0 - smoothstep(0.60, 0.85, up);   // крутые склоны — земля
-	float high_dirt = smoothstep(1.5, 4.0, v_height);      // макушки холмов — земля
-	float low_grass = 1.0 - smoothstep(-1.5, 0.5, v_height); // низины — всегда трава
+	float rw = v_road;
+	// Лёгкая вариативность у самой кромки дороги — плавный, но «грязный» переход.
+	rw = clamp(rw + (vnoise(tuv * 1.7) - 0.5) * 0.18 * rw, 0.0, 1.0);
 
-	// Плавное смешение с шумами: границы травы и земли неровные.
-	float edge_noise = (vnoise(tuv * 0.8) - 0.5) * 0.3;
-	float patch = vnoise(tuv * 0.15 + 4.7);                // локальные «проплешины»
-	float dirt_w = clamp(slope_dirt * (0.5 + high_dirt)
-		+ high_dirt * 0.55
-		+ (patch - 0.5) * 0.35
-		+ edge_noise
-		- low_grass * 0.6, 0.0, 1.0);
-
-	vec3 albedo = mix(g, d, dirt_w);
-	// Лёгкая тонировка: прохладнее у травы, теплее у земли.
-	albedo *= mix(vec3(0.93, 0.98, 0.92), vec3(1.05, 1.0, 0.95), dirt_w);
+	vec3 albedo = mix(g, d, rw);
+	// Небольшая тонировка: трава прохладнее, дорога теплее.
+	albedo *= mix(vec3(0.95, 1.0, 0.94), vec3(1.05, 1.0, 0.94), rw);
 
 	ALBEDO = albedo;
-	ROUGHNESS = mix(0.95, 0.85, dirt_w);
+	ROUGHNESS = mix(0.95, 0.85, rw);
 	SPECULAR = 0.15;
 }
 """
