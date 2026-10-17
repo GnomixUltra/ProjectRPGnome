@@ -13,6 +13,7 @@ extends MeshInstance3D
 @export var resolution := 160        # сегментов визуальной сетки
 @export var collision_resolution := 48  # сегментов коллизионной сетки
 @export var hill_amplitude := 7.5    # амплитуда холмов, м
+@export var ridge_amplitude := 9.0   # амплитуда горных хребтов, м
 @export var valley_width := 16.0     # половина ширины плоской поляны, м
 @export var valley_falloff := 50.0   # расстояние плавного подъёма холмов от центра, м
 @export var road_half_width := 3.0   # половина ширины дороги (тракта), м
@@ -44,10 +45,31 @@ func road_mask_at(p: Vector2) -> float:
 	return 1.0 - smoothstep(edge, edge + 1.2, absf(p.y))
 
 
+## Два горных хребта, тянущихся через всю карту: один с запада на восток
+## (с лёгким изгибом), второй — с северо-запада на юго-восток. Профиль гребня
+## ridge-shum: |шум| перевёрнут в пику, умножен на гауссов профиль склонов.
+func _ridges(p: Vector2) -> float:
+	var r := 0.0
+	# Хребет 1: линия вдоль X около z = -46 + изгиб.
+	var c1 := -46.0 + sin(p.x * 0.028) * 14.0
+	var d1 := p.y - c1
+	var w1 := exp(-pow(d1 / 26.0, 2.0))
+	var s1 := absf(_fbm(Vector2(p.x * 0.02, p.y * 0.02) + Vector2(5.0, 9.0)))
+	r += pow(s1, 1.6) * w1 * ridge_amplitude
+	# Хребет 2: диагональ северо-запад -> юго-восток.
+	var nrm := Vector2(0.6, 0.8)
+	var dn := p.dot(nrm) - (-20.0 + sin(p.dot(Vector2(-0.8, 0.6)) * 0.02) * 12.0)
+	var w2 := exp(-pow(dn / 22.0, 2.0))
+	var s2 := absf(_fbm(p * 0.024 + Vector2(77.0, 13.0)))
+	r += pow(s2, 1.6) * w2 * ridge_amplitude * 0.85
+	return r
+
+
 ## Высота рельефа в точке (x, z) плоскости карты.
 func height_at(p: Vector2) -> float:
 	var h := _fbm(p * 0.012) * hill_amplitude              # крупные холмы
 	h += _fbm(p * 0.045 + Vector2(37.0, 91.0)) * hill_amplitude * 0.3  # бугры
+	h += _ridges(p)                                          # горные хребты через всю карту
 	# Поляна: в центре высота прижата к нулю, холмы остаются снаружи.
 	var d := maxf(absf(p.x), absf(p.y))
 	var t := clampf((d - valley_width) / valley_falloff, 0.0, 1.0)

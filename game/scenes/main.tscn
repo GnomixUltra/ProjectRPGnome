@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_hud"]
@@ -23,17 +23,6 @@ tonemap_mode = 2
 ambient_light_source = 3
 ambient_light_color = Color(0.25, 0.3, 0.45, 1)
 ambient_light_energy = 0.4
-
-[sub_resource type="StandardMaterial3D" id="DirtMat"]
-albedo_texture = ExtResource("6_dirt")
-texture_filter = 0
-uv1_scale = Vector3(4, 2, 1)
-
-[sub_resource type="BoxMesh" id="CrateMesh"]
-size = Vector3(2, 2, 2)
-
-[sub_resource type="BoxShape3D" id="CrateShape"]
-size = Vector3(2, 2, 2)
 
 [sub_resource type="CapsuleShape3D" id="PlayerShape"]
 radius = 0.4
@@ -61,25 +50,13 @@ size = 200.0
 resolution = 160
 collision_resolution = 48
 hill_amplitude = 7.5
+ridge_amplitude = 9.0
 valley_width = 16.0
 valley_falloff = 50.0
 road_half_width = 3.0
 grass_texture = ExtResource("5_grass")
 dirt_texture = ExtResource("6_dirt")
 meters_per_tile = 2.0
-
-[node name="Crate" type="MeshInstance3D" parent="."]
-position = Vector3(5, 1, -6)
-mesh = SubResource("CrateMesh")
-material_override = SubResource("DirtMat")
-
-[node name="CrateBody" type="StaticBody3D" parent="."]
-position = Vector3(5, 1, -6)
-collision_layer = 1
-collision_mask = 0
-
-[node name="CrateCollision" type="CollisionShape3D" parent="CrateBody"]
-shape = SubResource("CrateShape")
 
 [node name="Player" type="CharacterBody3D" parent="."]
 position = Vector3(0, 2, 0)
