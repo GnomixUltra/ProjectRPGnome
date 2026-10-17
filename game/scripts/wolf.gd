@@ -37,6 +37,7 @@ var _dead := false
 func _ready() -> void:
 	_home = global_position
 	_health = max_health
+	add_to_group("enemies")
 	_wait_timer = randf_range(0.5, 2.5)
 	_pick_patrol_point()
 	bite_area.body_entered.connect(_on_bite_body)
