@@ -29,6 +29,8 @@ var _state := "idle"                  # idle | patrol | chase | flee_home
 var _wait_timer := 0.0
 var _bite_cd := 0.0
 var _dead := false
+# Оригинальные цвета материалов волка (для возврата после красной вспышки урона).
+var _base_colors := {}
 
 @onready var head: Node3D = $Visual/Head
 @onready var bite_area: Area3D = $Visual/Head/BiteArea
@@ -41,6 +43,12 @@ func _ready() -> void:
 	_wait_timer = randf_range(0.5, 2.5)
 	_pick_patrol_point()
 	bite_area.body_entered.connect(_on_bite_body)
+	# Запоминаем исходные цвета всех override-материалов (в scene они общие на
+	# инстансы — поэтому вспышка делается копией материала для каждого MeshInstance).
+	for mi in $Visual.find_children("*", "MeshInstance3D", true, false):
+		var m: MeshInstance3D = mi
+		if m.material_override is StandardMaterial3D:
+			_base_colors[m.name] = m.material_override.albedo_color
 
 
 func _pick_patrol_point() -> void:
@@ -140,6 +148,7 @@ func _on_bite_body(body: Node3D) -> void:
 func take_damage(amount: float) -> void:
 	if _dead or amount <= 0.0:
 		return
+	_flash_hurt()
 	_health = maxf(0.0, _health - amount)
 	health_changed.emit(_health, max_health)
 	# Рана переключает в агрессию, если игрок рядом.
@@ -147,6 +156,22 @@ func take_damage(amount: float) -> void:
 		_state = "chase"
 	if _health <= 0.0:
 		_die()
+
+
+## Вспышка «красного урона»: материалы волка кратковременно краснеют и возвращаются.
+func _flash_hurt() -> void:
+	for mi in $Visual.find_children("*", "MeshInstance3D", true, false):
+		var m: MeshInstance3D = mi
+		if not (m.material_override is StandardMaterial3D):
+			continue
+		var base: Color = _base_colors.get(m.name, m.material_override.albedo_color)
+		# Копия материала — чтобы не перекрашивать сразу всех волков (общий ресурс).
+		var mat: StandardMaterial3D = m.material_override.duplicate()
+		m.material_override = mat
+		mat.albedo_color = Color(1.0, 0.12, 0.12, 1.0)
+		var tw := create_tween()
+		tw.tween_interval(0.14)
+		tw.tween_property(mat, "albedo_color", base, 0.35).set_trans(Tween.TRANS_SINE)
 
 
 ## Прыжок игрока на голову — мгновенная смерть.

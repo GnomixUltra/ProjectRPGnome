@@ -38,6 +38,7 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var fist_pivot: Node3D = $Head/Camera3D/FistPivot
 @onready var fist: Node3D = $Head/Camera3D/FistPivot/Fist
+@onready var punch_area: Area3D = $Head/Camera3D/FistPivot/Fist/PunchArea
 
 var _stamina := stamina_max
 var _exhausted := false
@@ -148,11 +149,32 @@ func _try_punch() -> void:
 	stamina_changed.emit(_stamina, stamina_max, _exhausted)
 	punched.emit()
 
-	# Поражение целей из группы "enemies" в конусе перед игроком.
+	# Анимация замаха: быстрый выпад вперёд, возврат в исходную позицию.
+	fist.visible = true
+	var rest := Vector3(0.32, -0.26, -0.45)
+	var out := Vector3(0.22, -0.16, -0.95)
+	fist.position = rest
+	# Поражение целей — сразу при нажатии (зона кулака + конус перед игроком);
+	# анимация замаха ниже идёт параллельно, только для вида.
+	_apply_punch_damage()
+	var tw := create_tween()
+	tw.tween_property(fist, "position", out, 0.09).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.04)
+	tw.tween_property(fist, "position", rest, 0.16).set_ease(Tween.EASE_IN)
+	tw.tween_callback(_finish_punch)
+
+
+## Нанести урон врагам в зоне поражения кулака.
+func _apply_punch_damage() -> void:
+	var hit_any := {}
+	if punch_area != null and is_instance_valid(punch_area):
+		for body in punch_area.get_overlapping_bodies():
+			if body is Node3D and body.is_in_group("enemies"):
+				hit_any[body] = true
 	var from := global_position + Vector3(0.0, 1.4, 0.0)
 	var fwd := -global_transform.basis.z.normalized()
 	for body in get_tree().get_nodes_in_group("enemies"):
-		if not (body is Node3D) or not is_instance_valid(body):
+		if not (body is Node3D) or not is_instance_valid(body) or body in hit_any:
 			continue
 		var b := body as Node3D
 		var to := b.global_position + Vector3(0.0, 1.2, 0.0) - from
@@ -161,28 +183,10 @@ func _try_punch() -> void:
 			continue
 		if to.normalized().dot(fwd) < cos(deg_to_rad(punch_arc_degrees * 0.5)):
 			continue
-		# Проверка «линии удара» только против статичной геометрии мира (слой World):
-		# земля/камни блокируют удар, враги и персонажи — нет. Точка цели берётся
-		# чуть выше головы врага, чтобы луч не цеплял траву под ногами.
-		var ray_from := global_position + Vector3(0.0, 1.7, 0.0)
-		var ray_to := b.global_position + Vector3(0.0, 1.9, 0.0)
-		var hit := PhysicsRayQueryParameters3D.create(ray_from, ray_to, 1, [get_rid()])
-		var obstacle := get_world_3d().direct_space_state.intersect_ray(hit)
-		if not obstacle.is_empty():
-			continue
-		if b.has_method("take_damage"):
+		hit_any[b] = true
+	for b in hit_any:
+		if is_instance_valid(b) and b.has_method("take_damage"):
 			b.take_damage(punch_damage)
-
-	# Анимация замаха: быстрый выпад вперёд, возврат в исходную позицию.
-	fist.visible = true
-	var rest := Vector3(0.32, -0.26, -0.45)
-	var out := Vector3(0.22, -0.16, -0.95)
-	fist.position = rest
-	var tw := create_tween()
-	tw.tween_property(fist, "position", out, 0.09).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(0.04)
-	tw.tween_property(fist, "position", rest, 0.16).set_ease(Tween.EASE_IN)
-	tw.tween_callback(_finish_punch)
 
 
 func _finish_punch() -> void:
