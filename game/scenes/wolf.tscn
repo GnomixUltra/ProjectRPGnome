@@ -1,0 +1,104 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/wolf.gd" id="1_wolf"]
+
+[sub_resource type="StandardMaterial3D" id="FurGray"]
+albedo_color = Color(0.38, 0.4, 0.45, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="FurDark"]
+albedo_color = Color(0.22, 0.23, 0.26, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BodyMesh"]
+size = Vector3(0.7, 0.6, 1.4)
+
+[sub_resource type="BoxMesh" id="HeadMesh"]
+size = Vector3(0.5, 0.45, 0.6)
+
+[sub_resource type="BoxMesh" id="SnoutMesh"]
+size = Vector3(0.28, 0.22, 0.4)
+
+[sub_resource type="BoxMesh" id="LegMesh"]
+size = Vector3(0.18, 0.7, 0.18)
+
+[sub_resource type="BoxMesh" id="TailMesh"]
+size = Vector3(0.14, 0.14, 0.7)
+
+[sub_resource type="CapsuleShape3D" id="WolfShape"]
+radius = 0.45
+height = 0.95
+
+[sub_resource type="SphereShape3D" id="BiteShape"]
+radius = 0.7
+
+[node name="Wolf" type="CharacterBody3D"]
+collision_layer = 1
+collision_mask = 3
+script = ExtResource("1_wolf")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("WolfShape")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -0.1)
+mesh = SubResource("BodyMesh")
+material_override = SubResource("FurGray")
+
+[node name="Head" type="Node3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, -0.95)
+
+[node name="Skull" type="MeshInstance3D" parent="Visual/Head"]
+mesh = SubResource("HeadMesh")
+material_override = SubResource("FurGray")
+
+[node name="Snout" type="MeshInstance3D" parent="Visual/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, -0.42)
+mesh = SubResource("SnoutMesh")
+material_override = SubResource("FurDark")
+
+[node name="EarL" type="MeshInstance3D" parent="Visual/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18, 0.3, 0.1)
+mesh = SubResource("TailMesh")
+material_override = SubResource("FurDark")
+
+[node name="EarR" type="MeshInstance3D" parent="Visual/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, 0.3, 0.1)
+mesh = SubResource("TailMesh")
+material_override = SubResource("FurDark")
+
+[node name="BiteArea" type="Area3D" parent="Visual/Head"]
+collision_layer = 0
+collision_mask = 2
+
+[node name="BiteCollision" type="CollisionShape3D" parent="Visual/Head/BiteArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, -0.5)
+shape = SubResource("BiteShape")
+
+[node name="LegFL" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.22, 0.35, -0.5)
+mesh = SubResource("LegMesh")
+material_override = SubResource("FurDark")
+
+[node name="LegFR" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, 0.35, -0.5)
+mesh = SubResource("LegMesh")
+material_override = SubResource("FurDark")
+
+[node name="LegBL" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.24, 0.35, 0.45)
+mesh = SubResource("LegMesh")
+material_override = SubResource("FurDark")
+
+[node name="LegBR" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.24, 0.35, 0.45)
+mesh = SubResource("LegMesh")
+material_override = SubResource("FurDark")
+
+[node name="Tail" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0.4, 0.92, 0, 0, -0.92, 0.4, 0, 0.85, 0.75)
+mesh = SubResource("TailMesh")
+material_override = SubResource("FurDark")

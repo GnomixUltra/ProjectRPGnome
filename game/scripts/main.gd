@@ -1,5 +1,8 @@
 extends Node3D
 
+## Порядок кадров важен: Terrain строит меш/коллизии в своём _ready,
+## main спавнит игрока на кадре позже, WolfSpawner ждёт ещё кадр и спавнит волков.
+
 
 func _ready() -> void:
 	# Ждём, пока terrain.gd в _ready() построит меш и коллизию.
@@ -13,3 +16,6 @@ func _ready() -> void:
 		spawn.global_position = Vector3(0.0, ground_y + 1.5, 0.0)
 	elif spawn:
 		spawn.global_position = Vector3(0.0, 2.0, 0.0)
+
+	# Ещё кадр — волки спавнятся уже на готовом рельефе (их скрипт сам ждёт process_frame).
+	await get_tree().process_frame

@@ -1,9 +1,10 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_hud"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
 [ext_resource type="Script" path="res://scripts/terrain.gd" id="4_terrain"]
+[ext_resource type="Script" path="res://scripts/wolf_spawner.gd" id="8_wolvespawner"]
 [ext_resource type="Texture2D" path="res://assets/grass.png" id="5_grass"]
 [ext_resource type="Texture2D" path="res://assets/dirt.png" id="6_dirt"]
 [ext_resource type="Texture2D" path="res://assets/sky_night.png" id="7_sky"]
@@ -107,6 +108,20 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_hud")
 
+[node name="HealthPanel" type="ColorRect" parent="HUD/HUDRoot"]
+z_index = -1
+layout_mode = 0
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 16
+offset_top = -104
+offset_right = 336
+offset_bottom = 4
+grow_vertical = 0
+color = Color(0, 0, 0, 0.35)
+
 [node name="Crosshair" type="Label" parent="HUD/HUDRoot"]
 layout_mode = 0
 offset_left = 632
@@ -132,7 +147,7 @@ grow_vertical = 0
 max_value = 100.0
 value = 100.0
 show_percentage = false
-modulate = Color(1, 0.4, 0.4, 1)
+modulate = Color(1, 0.35, 0.35, 1)
 
 [node name="StaminaBar" type="ProgressBar" parent="HUD/HUDRoot"]
 unique_name_in_owner = true
@@ -149,7 +164,21 @@ grow_vertical = 0
 max_value = 100.0
 value = 100.0
 show_percentage = false
-modulate = Color(1, 0.9, 0.3, 1)
+modulate = Color(0.35, 1, 0.4, 1)
+
+[node name="HealthLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 24
+offset_top = -98
+offset_right = 324
+offset_bottom = -78
+grow_vertical = 0
+text = "Здоровье: 100 / 100"
 
 [node name="StaminaLabel" type="Label" parent="HUD/HUDRoot"]
 unique_name_in_owner = true
@@ -163,4 +192,11 @@ offset_top = -24
 offset_right = 324
 offset_bottom = -4
 grow_vertical = 0
-text = "Выносливость: 100"
+text = "Выносливость: 100 / 100"
+
+[node name="WolfSpawner" type="Node3D" parent="."]
+script = ExtResource("8_wolvespawner")
+wolf_count = 6
+glade_center = Vector2(0, -28)
+glade_radius = 14.0
+min_distance_to_player = 12.0

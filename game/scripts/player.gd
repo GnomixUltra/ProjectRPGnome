@@ -14,7 +14,14 @@ extends CharacterBody3D
 @export var exhausted_threshold := 15.0   # ниже — истощение, бег недоступен до восстановления выше
 @export var recover_above := 40.0         # пороговое значение для выхода из истощения
 
+# --- Здоровье ---
+@export var health_max := 100.0
+@export var health_regen_rate := 1.5      # HP/с — медленная регенерация в покое
+@export var health_regen_delay := 6.0     # с — пауза после урона перед регенерацией
+
 signal stamina_changed(current: float, maximum: float, exhausted: bool)
+signal health_changed(current: float, maximum: float)
+signal died
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
@@ -23,14 +30,69 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 var _stamina := stamina_max
 var _exhausted := false
+var _health := health_max
+var _hurt_time := 999.0                   # время последней раны (для регенерации)
+var _dead := false
 var _yaw := 0.0
 var _pitch := 0.0
 
 
 func _ready() -> void:
 	_stamina = stamina_max
+	_health = health_max
+	add_to_group("player")
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	camera.current = true
+
+
+func _process(delta: float) -> void:
+	if _dead:
+		return
+	# Медленная регенерация здоровья, если давно не получали урон.
+	if _health < health_max and _hurt_time >= health_regen_delay:
+		_health = minf(health_max, _health + health_regen_rate * delta)
+		health_changed.emit(_health, health_max)
+	_hurt_time += delta
+
+
+## Нанести урон игроку (вызывается волками и прочими источниками).
+func take_damage(amount: float) -> void:
+	if _dead or amount <= 0.0:
+		return
+	_health = maxf(0.0, _health - amount)
+	_hurt_time = 0.0
+	health_changed.emit(_health, health_max)
+	if _health <= 0.0:
+		_die()
+
+
+func heal(amount: float) -> void:
+	if _dead or amount <= 0.0:
+		return
+	_health = minf(health_max, _health + amount)
+	health_changed.emit(_health, health_max)
+
+
+func _die() -> void:
+	_dead = true
+	died.emit()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	# Респавн через пару секунд.
+	var tree := get_tree()
+	await tree.create_timer(2.0).timeout
+	_respawn()
+
+
+func _respawn() -> void:
+	_health = health_max
+	_stamina = stamina_max
+	_exhausted = false
+	_dead = false
+	health_changed.emit(_health, health_max)
+	stamina_changed.emit(_stamina, stamina_max, false)
+	global_position = Vector3(0.0, 2.0, 0.0)
+	velocity = Vector3.ZERO
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -51,6 +113,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _dead:
+		velocity = Vector3.ZERO
+		move_and_slide()
+		return
+
 	# Гравитация
 	if not is_on_floor():
 		velocity.y -= gravity * delta
