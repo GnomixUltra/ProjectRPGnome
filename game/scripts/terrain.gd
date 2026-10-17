@@ -120,7 +120,9 @@ func _build_physics_owner() -> void:
 	if shape_node == null:
 		shape_node = CollisionShape3D.new()
 		shape_node.name = "TerrainCollision"
-		body.add_child(shape_node)
+		# call_deferred: _ready может выполняться, когда parent ещё в фазе setup
+		# (иначе add_child падает с ошибкой и коллизия земли не создаётся).
+		body.add_child.call_deferred(shape_node)
 	shape_node.shape = _build_compound()
 
 
@@ -216,21 +218,23 @@ void fragment() {
 
 # ---------- Фрактальный value-шум (CPU) ----------
 static func _hash2(x: float, y: float) -> float:
-	var n := sin(x * 127.1 + y * 311.7 + NOISE_SEED) * 43758.5453
-	return n - floor(n)
+	var n: float = sin(x * 127.1 + y * 311.7 + NOISE_SEED) * 43758.5453
+	return n - float(floor(n))
 
 
 static func _vnoise2(x: float, y: float) -> float:
-	var ix := floor(x)
-	var iy := floor(y)
-	var fx := x - ix
-	var fy := y - iy
+	# floor()/fmod() возвращают Variant — явно приводим к float,
+	# иначе строгие настройки компилятора (untyped_declaration = error) валят скрипт.
+	var ix: float = float(floor(x))
+	var iy: float = float(floor(y))
+	var fx: float = x - ix
+	var fy: float = y - iy
 	fx = fx * fx * (3.0 - 2.0 * fx)
 	fy = fy * fy * (3.0 - 2.0 * fy)
-	var a := _hash2(ix, iy)
-	var b := _hash2(ix + 1.0, iy)
-	var c := _hash2(ix, iy + 1.0)
-	var d := _hash2(ix + 1.0, iy + 1.0)
+	var a: float = _hash2(ix, iy)
+	var b: float = _hash2(ix + 1.0, iy)
+	var c: float = _hash2(ix, iy + 1.0)
+	var d: float = _hash2(ix + 1.0, iy + 1.0)
 	return lerpf(lerpf(a, b, fx), lerpf(c, d, fx), fy)
 
 

@@ -14,7 +14,8 @@ func _ready() -> void:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	for i in range(wolf_count):
 		var pos := _random_pos(player)
-		add_child(_make_wolf(pos))
+		# add_child.call_deferred: узел может спавниться, пока дерево ещё в фазе setup.
+		add_child.call_deferred(_make_wolf(pos))
 
 
 func _random_pos(player: Node3D) -> Vector3:
