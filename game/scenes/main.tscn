@@ -1,0 +1,171 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="2_hud"]
+[ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
+[ext_resource type="Texture2D" path="res://assets/grass.png" id="4_grass"]
+[ext_resource type="Texture2D" path="res://assets/dirt.png" id="5_dirt"]
+[ext_resource type="Texture2D" path="res://assets/sky_night.png" id="6_sky"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat_1"]
+sky_top_color = Color(0.02, 0.03, 0.08, 1)
+sky_horizon_color = Color(0.08, 0.1, 0.18, 1)
+ground_bottom_color = Color(0.02, 0.02, 0.05, 1)
+ground_horizon_color = Color(0.08, 0.1, 0.18, 1)
+
+[sub_resource type="PanoramaSkyMaterial" id="SkyPan_1"]
+panorama = ExtResource("6_sky")
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("SkyPan_1")
+
+[sub_resource type="Environment" id="Env_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+tonemap_mode = 2
+ambient_light_source = 3
+ambient_light_color = Color(0.25, 0.3, 0.45, 1)
+ambient_light_energy = 0.4
+
+[sub_resource type="StandardMaterial3D" id="GrassMat"]
+albedo_texture = ExtResource("4_grass")
+texture_filter = 0
+uv1_scale = Vector3(64, 64, 1)
+
+[sub_resource type="PlaneMesh" id="GroundMesh"]
+size = Vector2(200, 200)
+
+[sub_resource type="StandardMaterial3D" id="DirtMat"]
+albedo_texture = ExtResource("5_dirt")
+texture_filter = 0
+uv1_scale = Vector3(4, 2, 1)
+
+[sub_resource type="BoxMesh" id="CrateMesh"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="WorldBoundaryShape3D" id="GroundShape"]
+
+[sub_resource type="CapsuleShape3D" id="PlayerShape"]
+radius = 0.4
+height = 1.8
+
+[node name="Main" type="Node3D"]
+script = ExtResource("3_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_1")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.785398, -0.523599, 0)
+light_energy = 0.7
+light_color = Color(0.7, 0.8, 1, 1)
+shadow_enabled = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("GroundMesh")
+material_override = SubResource("GrassMat")
+
+[node name="GroundBody" type="StaticBody3D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="GroundCollision" type="CollisionShape3D" parent="GroundBody"]
+shape = SubResource("GroundShape")
+
+[node name="Crate" type="MeshInstance3D" parent="."]
+position = Vector3(5, 1, -6)
+mesh = SubResource("CrateMesh")
+material_override = SubResource("DirtMat")
+
+[node name="CrateBody" type="StaticBody3D" parent="."]
+position = Vector3(5, 1, -6)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CrateCollision" type="CollisionShape3D" parent="CrateBody"]
+shape = SubResource("CrateMesh")
+
+[node name="Player" type="CharacterBody3D" parent="."]
+position = Vector3(0, 1, 0)
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_player")
+groups=["player"]
+
+[node name="Collision" type="CollisionShape3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("PlayerShape")
+
+[node name="Head" type="Node3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+
+[node name="Camera3D" type="Camera3D" parent="Player/Head"]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="HUDRoot" type="Control" parent="HUD"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_hud")
+
+[node name="Crosshair" type="Label" parent="HUD/HUDRoot"]
+layout_mode = 0
+offset_left = 632
+offset_top = 350
+offset_right = 648
+offset_bottom = 370
+text = "+"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 24
+offset_top = -76
+offset_right = 324
+offset_bottom = -52
+grow_vertical = 0
+max_value = 100.0
+value = 100.0
+show_percentage = false
+modulate = Color(1, 0.4, 0.4, 1)
+
+[node name="StaminaBar" type="ProgressBar" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 24
+offset_top = -46
+offset_right = 324
+offset_bottom = -26
+grow_vertical = 0
+max_value = 100.0
+value = 100.0
+show_percentage = false
+modulate = Color(1, 0.9, 0.3, 1)
+
+[node name="StaminaLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 24
+offset_top = -24
+offset_right = 324
+offset_bottom = -4
+grow_vertical = 0
+text = "Выносливость: 100"

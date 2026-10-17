@@ -1,0 +1,9 @@
+# Godot 4 специфичное
+.godot/
+*.uid
+export_presets.cfg
+~$*
+
+# ОС
+.DS_Store
+Thumbs.db
