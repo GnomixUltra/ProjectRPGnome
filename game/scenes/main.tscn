@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_hud"]
@@ -30,7 +30,7 @@ ambient_light_energy = 0.4
 [sub_resource type="StandardMaterial3D" id="GrassMat"]
 albedo_texture = ExtResource("4_grass")
 texture_filter = 0
-uv1_scale = Vector3(64, 64, 1)
+uv1_scale = Vector3(32, 32, 1)
 
 [sub_resource type="PlaneMesh" id="GroundMesh"]
 size = Vector2(200, 200)
@@ -40,8 +40,22 @@ albedo_texture = ExtResource("5_dirt")
 texture_filter = 0
 uv1_scale = Vector3(4, 2, 1)
 
+[sub_resource type="StandardMaterial3D" id="StoneMat"]
+albedo_texture = ExtResource("5_dirt")
+texture_filter = 0
+uv1_scale = Vector3(8, 3, 8)
+
 [sub_resource type="BoxMesh" id="CrateMesh"]
 size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxMesh" id="WallMesh"]
+size = Vector3(20, 5, 1)
+
+[sub_resource type="BoxShape3D" id="WallShape_N"]
+size = Vector3(20, 5, 1)
+
+[sub_resource type="BoxShape3D" id="WallShape_E"]
+size = Vector3(1, 5, 20)
 
 [sub_resource type="WorldBoundaryShape3D" id="GroundShape"]
 
@@ -84,6 +98,33 @@ collision_mask = 0
 
 [node name="CrateCollision" type="CollisionShape3D" parent="CrateBody"]
 shape = SubResource("CrateMesh")
+
+[node name="WallN" type="MeshInstance3D" parent="."]
+position = Vector3(0, 2.5, -14)
+mesh = SubResource("WallMesh")
+material_override = SubResource("StoneMat")
+
+[node name="WallNBody" type="StaticBody3D" parent="."]
+position = Vector3(0, 2.5, -14)
+collision_layer = 1
+collision_mask = 0
+
+[node name="WallNCollision" type="CollisionShape3D" parent="WallNBody"]
+shape = SubResource("WallShape_N")
+
+[node name="WallE" type="MeshInstance3D" parent="."]
+position = Vector3(12, 2.5, -2)
+mesh = SubResource("WallMesh")
+material_override = SubResource("StoneMat")
+
+[node name="WallEBody" type="StaticBody3D" parent="."]
+position = Vector3(12, 2.5, -2)
+rotation = Vector3(0, 0, 0)
+collision_layer = 1
+collision_mask = 0
+
+[node name="WallECollision" type="CollisionShape3D" parent="WallEBody"]
+shape = SubResource("WallShape_E")
 
 [node name="Player" type="CharacterBody3D" parent="."]
 position = Vector3(0, 1, 0)
