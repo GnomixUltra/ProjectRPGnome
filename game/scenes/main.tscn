@@ -1,63 +1,39 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_hud"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
-[ext_resource type="Texture2D" path="res://assets/grass.png" id="4_grass"]
-[ext_resource type="Texture2D" path="res://assets/dirt.png" id="5_dirt"]
-[ext_resource type="Texture2D" path="res://assets/sky_night.png" id="6_sky"]
-
-[sub_resource type="ProceduralSkyMaterial" id="SkyMat_1"]
-sky_top_color = Color(0.02, 0.03, 0.08, 1)
-sky_horizon_color = Color(0.08, 0.1, 0.18, 1)
-ground_bottom_color = Color(0.02, 0.02, 0.05, 1)
-ground_horizon_color = Color(0.08, 0.1, 0.18, 1)
+[ext_resource type="Script" path="res://scripts/terrain.gd" id="4_terrain"]
+[ext_resource type="Texture2D" path="res://assets/grass.png" id="5_grass"]
+[ext_resource type="Texture2D" path="res://assets/dirt.png" id="6_dirt"]
+[ext_resource type="Texture2D" path="res://assets/sky_night.png" id="7_sky"]
 
 [sub_resource type="PanoramaSkyMaterial" id="SkyPan_1"]
-panorama = ExtResource("6_sky")
+panorama = ExtResource("7_sky")
 
 [sub_resource type="Sky" id="Sky_1"]
 sky_material = SubResource("SkyPan_1")
 
 [sub_resource type="Environment" id="Env_1"]
 background_mode = 2
+background_energy_multiplier = 1.6
 sky = SubResource("Sky_1")
+sky_rotation = Vector3(0, 0.6, 0)
 tonemap_mode = 2
 ambient_light_source = 3
 ambient_light_color = Color(0.25, 0.3, 0.45, 1)
 ambient_light_energy = 0.4
 
-[sub_resource type="StandardMaterial3D" id="GrassMat"]
-albedo_texture = ExtResource("4_grass")
-texture_filter = 0
-uv1_scale = Vector3(32, 32, 1)
-
-[sub_resource type="PlaneMesh" id="GroundMesh"]
-size = Vector2(200, 200)
-
 [sub_resource type="StandardMaterial3D" id="DirtMat"]
-albedo_texture = ExtResource("5_dirt")
+albedo_texture = ExtResource("6_dirt")
 texture_filter = 0
 uv1_scale = Vector3(4, 2, 1)
-
-[sub_resource type="StandardMaterial3D" id="StoneMat"]
-albedo_texture = ExtResource("5_dirt")
-texture_filter = 0
-uv1_scale = Vector3(8, 3, 8)
 
 [sub_resource type="BoxMesh" id="CrateMesh"]
 size = Vector3(2, 2, 2)
 
-[sub_resource type="BoxMesh" id="WallMesh"]
-size = Vector3(20, 5, 1)
-
-[sub_resource type="BoxShape3D" id="WallShape_N"]
-size = Vector3(20, 5, 1)
-
-[sub_resource type="BoxShape3D" id="WallShape_E"]
-size = Vector3(1, 5, 20)
-
-[sub_resource type="WorldBoundaryShape3D" id="GroundShape"]
+[sub_resource type="BoxShape3D" id="CrateShape"]
+size = Vector3(2, 2, 2)
 
 [sub_resource type="CapsuleShape3D" id="PlayerShape"]
 radius = 0.4
@@ -75,16 +51,21 @@ light_energy = 0.7
 light_color = Color(0.7, 0.8, 1, 1)
 shadow_enabled = true
 
-[node name="Ground" type="MeshInstance3D" parent="."]
-mesh = SubResource("GroundMesh")
-material_override = SubResource("GrassMat")
-
 [node name="GroundBody" type="StaticBody3D" parent="."]
 collision_layer = 1
 collision_mask = 0
 
-[node name="GroundCollision" type="CollisionShape3D" parent="GroundBody"]
-shape = SubResource("GroundShape")
+[node name="Terrain" type="MeshInstance3D" parent="GroundBody"]
+script = ExtResource("4_terrain")
+size = 200.0
+resolution = 160
+collision_resolution = 48
+hill_amplitude = 7.5
+valley_width = 16.0
+valley_falloff = 50.0
+grass_texture = ExtResource("5_grass")
+dirt_texture = ExtResource("6_dirt")
+uv_scale = Vector2(64, 64)
 
 [node name="Crate" type="MeshInstance3D" parent="."]
 position = Vector3(5, 1, -6)
@@ -97,37 +78,10 @@ collision_layer = 1
 collision_mask = 0
 
 [node name="CrateCollision" type="CollisionShape3D" parent="CrateBody"]
-shape = SubResource("CrateMesh")
-
-[node name="WallN" type="MeshInstance3D" parent="."]
-position = Vector3(0, 2.5, -14)
-mesh = SubResource("WallMesh")
-material_override = SubResource("StoneMat")
-
-[node name="WallNBody" type="StaticBody3D" parent="."]
-position = Vector3(0, 2.5, -14)
-collision_layer = 1
-collision_mask = 0
-
-[node name="WallNCollision" type="CollisionShape3D" parent="WallNBody"]
-shape = SubResource("WallShape_N")
-
-[node name="WallE" type="MeshInstance3D" parent="."]
-position = Vector3(12, 2.5, -2)
-mesh = SubResource("WallMesh")
-material_override = SubResource("StoneMat")
-
-[node name="WallEBody" type="StaticBody3D" parent="."]
-position = Vector3(12, 2.5, -2)
-rotation = Vector3(0, 0, 0)
-collision_layer = 1
-collision_mask = 0
-
-[node name="WallECollision" type="CollisionShape3D" parent="WallEBody"]
-shape = SubResource("WallShape_E")
+shape = SubResource("CrateShape")
 
 [node name="Player" type="CharacterBody3D" parent="."]
-position = Vector3(0, 1, 0)
+position = Vector3(0, 2, 0)
 collision_layer = 2
 collision_mask = 1
 script = ExtResource("1_player")
