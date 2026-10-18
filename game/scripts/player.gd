@@ -31,6 +31,11 @@ signal stamina_changed(current: float, maximum: float, exhausted: bool)
 signal health_changed(current: float, maximum: float)
 signal died
 signal punched                       # для анимации/звука (зарезервировано)
+signal loot_received(reward: Dictionary)  # найденный лут из сундуков
+
+# --- RPG-переменные игрока ---
+var gold := 0                        # золото из сундуков
+var punch_bonus := 0.0               # усиление кулака (находки «Кулак +N»)
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
@@ -133,6 +138,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		punch_pressed = event.pressed and not event.echo and event.keycode == KEY_F
 	if punch_pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_try_punch()
+	# Взаимодействие с сундуками — E.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		_try_open_chest()
+
+
+## Открыть ближайший сундук (в пределах 2 м).
+func _try_open_chest() -> void:
+	for c in get_tree().get_nodes_in_group("chests"):
+		if not (c is Node3D) or not is_instance_valid(c):
+			continue
+		if global_position.distance_to((c as Node3D).global_position) <= 2.0 and c.has_method("interact"):
+			c.interact()
+			return
 
 
 ## Попытка удара кулаком: проверка кулдауна/стамины, замах, поражение врагов в конусе.
@@ -186,7 +204,19 @@ func _apply_punch_damage() -> void:
 		hit_any[b] = true
 	for b in hit_any:
 		if is_instance_valid(b) and b.has_method("take_damage"):
-			b.take_damage(punch_damage)
+			b.take_damage(punch_damage + punch_bonus)
+
+
+## Применить награду из сундука (сигнал looted connects сюда в _ready).
+func apply_reward(reward: Dictionary) -> void:
+	match reward.get("type", ""):
+		"gold":
+			gold += int(reward.get("amount", 0))
+		"potion":
+			heal(float(reward.get("heal", 20)))
+		"gauntlet":
+			punch_bonus += float(reward.get("damage_bonus", 1))
+	loot_received.emit(reward)
 
 
 func _finish_punch() -> void:

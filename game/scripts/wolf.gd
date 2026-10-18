@@ -17,6 +17,8 @@ extends CharacterBody3D
 @export var patrol_radius := 9.0          # радиус патрулирования вокруг дома
 @export var turn_speed := 7.0             # рад/с — поворот к цели
 
+var level := 1                            # случайный уровень волка (1..3)
+
 signal health_changed(current: float, maximum: float)
 signal died(wolf: Node3D)
 
@@ -40,6 +42,12 @@ func _ready() -> void:
 	_home = global_position
 	_health = max_health
 	add_to_group("enemies")
+	# Случайные RPG-переменные каждого волка: уровень 1..3 (HP/урон/размер).
+	level = int(randi_range(1, 3))
+	max_health += (level - 1) * 8.0
+	bite_damage += (level - 1) * 2.0
+	scale = Vector3.ONE * (1.0 + (level - 1) * 0.15)
+	_health = max_health
 	_wait_timer = randf_range(0.5, 2.5)
 	_pick_patrol_point()
 	bite_area.body_entered.connect(_on_bite_body)

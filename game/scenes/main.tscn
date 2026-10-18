@@ -1,10 +1,11 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_hud"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
 [ext_resource type="Script" path="res://scripts/terrain.gd" id="4_terrain"]
 [ext_resource type="Script" path="res://scripts/wolf_spawner.gd" id="8_wolvespawner"]
+[ext_resource type="Script" path="res://scripts/chest_spawner.gd" id="9_chestspawner"]
 [ext_resource type="Texture2D" path="res://assets/grass.png" id="5_grass"]
 [ext_resource type="Texture2D" path="res://assets/dirt.png" id="6_dirt"]
 [ext_resource type="Texture2D" path="res://assets/sky_night.png" id="7_sky"]
@@ -219,6 +220,41 @@ offset_right = 324
 offset_bottom = -4
 grow_vertical = 0
 text = "Выносливость: 100 / 100"
+
+[node name="StatsLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 0
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24
+offset_top = 52
+offset_right = -24
+offset_bottom = 76
+grow_horizontal = 2
+text = "Золото: 0   |   Урон кулака: 14"
+horizontal_alignment = 2
+
+[node name="LootToast" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220
+offset_top = 90
+offset_right = 220
+offset_bottom = 120
+grow_horizontal = 2
+grow_vertical = 2
+text = ""
+horizontal_alignment = 1
+
+[node name="ChestSpawner" type="Node3D" parent="."]
+script = ExtResource("9_chestspawner")
+chest_count = 7
 
 [node name="WolfSpawner" type="Node3D" parent="."]
 script = ExtResource("8_wolvespawner")
