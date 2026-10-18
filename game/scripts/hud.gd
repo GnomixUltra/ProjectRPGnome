@@ -14,6 +14,7 @@ var _toast_timer := 0.0
 
 
 func _ready() -> void:
+	add_to_group("hud")
 	player = get_tree().get_first_node_in_group("player")
 	if player and player.has_signal("stamina_changed"):
 		player.stamina_changed.connect(_on_stamina_changed)
@@ -53,6 +54,15 @@ func set_health(current: float, maximum: float) -> void:
 	# От ярко-красного к тёмно-бордовому по мере убывания HP.
 	health_bar.modulate = Color(1.0, 0.35 + 0.25 * ratio, 0.35 + 0.2 * ratio).lerp(Color(0.55, 0.1, 0.1), 1.0 - ratio)
 	health_label.text = "Здоровье: %d / %d" % [int(round(current)), int(round(maximum))]
+
+
+## Показать произвольное сообщение (используют NPC, например волк-босс при смерти).
+func show_loot(text: String) -> void:
+	if toast != null:
+		toast.text = text
+		toast.modulate = Color(1, 1, 1, 1)
+		toast.visible = true
+	_toast_timer = 3.0
 
 
 func _on_loot_received(reward: Dictionary) -> void:

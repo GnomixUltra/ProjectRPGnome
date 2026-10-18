@@ -12,12 +12,16 @@ extends CharacterBody3D
 @export var bite_damage := 12.0           # урон укуса
 @export var bite_interval := 1.4          # с — кулдаун укусов
 @export var aggro_range := 18.0           # дистанция обнаружения игрока
+var _aggro := 18.0                        # активный радиус аггро (босс — вся карта)
 @export var attack_range := 1.9           # дистанция укуса
 @export var leash_range := 34.0           # дальше этой дистанции от дома — отступать
 @export var patrol_radius := 9.0          # радиус патрулирования вокруг дома
 @export var turn_speed := 7.0             # рад/с — поворот к цели
 
-var level := 1                            # случайный уровень волка (1..3)
+enum Tier { GRAY, GREEN, BOSS }   # 1 обычный · 2 зелёный усиленный · 3 чёрный босс
+
+var tier := Tier.GRAY             # уровень этого волка
+var boss := false                 # True → чёрный волк-босс (спавнер выставляет сам)
 
 signal health_changed(current: float, maximum: float)
 signal died(wolf: Node3D)
@@ -40,23 +44,81 @@ var _base_colors := {}
 
 func _ready() -> void:
 	_home = global_position
-	_health = max_health
 	add_to_group("enemies")
-	# Случайные RPG-переменные каждого волка: уровень 1..3 (HP/урон/размер).
-	level = int(randi_range(1, 3))
-	max_health += (level - 1) * 8.0
-	bite_damage += (level - 1) * 2.0
-	scale = Vector3.ONE * (1.0 + (level - 1) * 0.15)
+	# Назначаем уровень: босс (если выставлен спавнером), иначе случайно 1 или 2.
+	tier = Tier.BOSS if boss else (Tier.GREEN if randf() < 0.4 else Tier.GRAY)
+	_apply_tier_stats()
+	_aggro = INF if tier == Tier.BOSS else aggro_range
 	_health = max_health
 	_wait_timer = randf_range(0.5, 2.5)
 	_pick_patrol_point()
+	# Укус — по таймеру в _physics_process (надёжно даже если игрок стоит вплотную:
+	# body_entered срабатывает только на ПЕРЕСЕЧЕНИЕ границы области, поэтому без
+	# движения игрока второй укус никогда бы не прошёл).
 	bite_area.body_entered.connect(_on_bite_body)
-	# Запоминаем исходные цвета всех override-материалов (в scene они общие на
-	# инстансы — поэтому вспышка делается копией материала для каждого MeshInstance).
+	# Индивидуальные материалы (копии общих ресурсов) + перекраска под тир.
 	for mi in $Visual.find_children("*", "MeshInstance3D", true, false):
 		var m: MeshInstance3D = mi
 		if m.material_override is StandardMaterial3D:
+			m.material_override = m.material_override.duplicate()
 			_base_colors[m.name] = m.material_override.albedo_color
+	_recolor_tier()
+	_update_label()
+
+
+## Параметры и масштаб по тиру.
+func _apply_tier_stats() -> void:
+	match tier:
+		Tier.GREEN:
+			max_health = 64.0
+			bite_damage = 16.0
+			chase_speed = 7.0
+			scale = Vector3.ONE * 1.2
+		Tier.BOSS:
+			max_health = 160.0
+			bite_damage = 24.0
+			chase_speed = 6.2
+			attack_range = 2.6
+			scale = Vector3.ONE * 1.7
+		_:
+			pass  # GRAY — базовые значения из экспорт-переменных
+
+
+## Цвет шерсти: серый / зелёный (усиленные) / чёрный (босс).
+func _recolor_tier() -> void:
+	var fur := Color(0.38, 0.4, 0.45)
+	var dark := Color(0.22, 0.23, 0.26)
+	match tier:
+		Tier.GREEN:
+			fur = Color(0.24, 0.62, 0.3)
+			dark = Color(0.12, 0.38, 0.18)
+		Tier.BOSS:
+			fur = Color(0.07, 0.07, 0.09)
+			dark = Color(0.03, 0.03, 0.04)
+	for mi in $Visual.find_children("*", "MeshInstance3D", true, false):
+		var m: MeshInstance3D = mi
+		if not (m.material_override is StandardMaterial3D):
+			continue
+		var c: Color = fur if m.name == "Body" or m.name == "Skull" else dark
+		m.material_override.albedo_color = c
+		_base_colors[m.name] = c
+
+
+func _tier_name() -> String:
+	match tier:
+		Tier.GREEN: return "Зелёный волк"
+		Tier.BOSS: return "ВОЛК-БОСС"
+		_: return "Волк"
+
+
+func _update_label() -> void:
+	var lbl := get_node_or_null("Label3D") as Label3D
+	if lbl:
+		lbl.text = "%s · HP %d" % [_tier_name(), int(ceilf(_health))]
+		if tier == Tier.BOSS:
+			lbl.modulate = Color(1.0, 0.35, 0.35)
+		elif tier == Tier.GREEN:
+			lbl.modulate = Color(0.55, 1.0, 0.6)
 
 
 func _pick_patrol_point() -> void:
@@ -83,27 +145,30 @@ func _physics_process(delta: float) -> void:
 	match _state:
 		"idle":
 			_wait_timer -= delta
-			if dist_to_player <= aggro_range:
+			if dist_to_player <= _aggro:
 				_state = "chase"
 			elif _wait_timer <= 0.0:
 				_pick_patrol_point()
 				_state = "patrol"
 		"patrol":
-			if dist_to_player <= aggro_range:
+			if dist_to_player <= _aggro:
 				_state = "chase"
 			elif global_position.distance_to(_patrol_target) < 1.2:
 				_state = "idle"
 				_wait_timer = randf_range(1.5, 4.0)
 		"chase":
-			if dist_to_player > leash_range:
+			# Босс не отступает никогда — преследует по всей карте.
+			if tier == Tier.BOSS:
+				pass
+			elif dist_to_player > leash_range:
 				_state = "flee_home"
-			elif dist_to_player > aggro_range * 1.6:
+			elif dist_to_player > _aggro * 1.6:
 				_state = "flee_home"
 		"flee_home":
 			if global_position.distance_to(_home) < 2.0:
 				_state = "idle"
 				_wait_timer = randf_range(1.0, 3.0)
-			elif dist_to_player <= aggro_range * 0.7:
+			elif dist_to_player <= _aggro * 0.7:
 				_state = "chase"
 
 	# Целевая точка и скорость.
@@ -138,10 +203,17 @@ func _physics_process(delta: float) -> void:
 	else:
 		head.rotation.x = 0.0
 
+	# Кусаем стоящего вплотную игрока по таймеру (body_entered срабатывает только
+	# на пересечение границы — без движения игрока укусы бы не повторялись).
+	if _state == "chase" and _bite_cd <= 0.0 and dist_to_player <= attack_range + 0.5 \
+			and player and player.has_method("take_damage"):
+		player.take_damage(bite_damage)
+		_bite_cd = bite_interval
+
 	move_and_slide()
 
 
-## Укус по касанию области головы игрока.
+## Укус при входе игрока в область головы (страховка; основной укус — по таймеру).
 func _on_bite_body(body: Node3D) -> void:
 	if _dead or _bite_cd > 0.0:
 		return
@@ -157,6 +229,7 @@ func take_damage(amount: float) -> void:
 	if _dead or amount <= 0.0:
 		return
 	_flash_hurt()
+	_update_label()
 	_health = maxf(0.0, _health - amount)
 	health_changed.emit(_health, max_health)
 	# Рана переключает в агрессию, если игрок рядом.
@@ -193,6 +266,18 @@ func stomped() -> void:
 
 func _die() -> void:
 	_dead = true
+	_update_label()
+	if tier == Tier.BOSS:
+		var player := get_tree().get_first_node_in_group("player")
+		if player and player.has_method("apply_reward"):
+			# RPG-награда через тот же механизм, что и сундуки: игрок начислит
+			# бонус к кулаку и сам покажет тост в HUD (loot_received).
+			player.apply_reward({"type": "gauntlet", "damage_bonus": 4.0,
+				"text": "ВОЛК-БОСС ПОВЕРЖЕН! Кулак +4"})
+			player.apply_reward({"type": "gold", "amount": 50,
+				"text": "+50 золота за голову босса"})
+		else:
+			_show_toast("ВОЛК-БОСС ПОВЕРЖЕН!")
 	died.emit(self)
 	set_physics_process(false)
 	collision_layer = 0
@@ -204,3 +289,10 @@ func _die() -> void:
 	tw.parallel().tween_property(self, "global_position:y", global_position.y - 0.4, 0.5)
 	tw.tween_interval(1.5)
 	tw.tween_callback(queue_free)
+
+
+## Всплывающая надпись в HUD (используем LootToast, если он есть).
+func _show_toast(text: String) -> void:
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("show_loot"):
+		hud.show_loot(text)

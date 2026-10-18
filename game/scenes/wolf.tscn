@@ -102,3 +102,10 @@ material_override = SubResource("FurDark")
 transform = Transform3D(1, 0, 0, 0.4, 0.92, 0, 0, -0.92, 0.4, 0, 0.85, 0.75)
 mesh = SubResource("TailMesh")
 material_override = SubResource("FurDark")
+
+[node name="Label3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+text = "Волк"
+font_size = 48
+outline_size = 12
+billboard = 1
